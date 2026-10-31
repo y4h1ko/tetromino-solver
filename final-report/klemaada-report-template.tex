@@ -1,0 +1,82 @@
+\documentstyle[epsf,epic,eepic,eepicemu]{article} \oddsidemargin=-5mm
+\evensidemargin=-5mm\marginparwidth=.08in \marginparsep=.01in
+\marginparpush=5pt\topmargin=-15mm\headheight=12pt
+\headsep=25pt\footheight=12pt \footskip=30pt\textheight=25cm
+\textwidth=17cm\columnsep=2mm
+\columnseprule=1pt\parindent=15pt\parskip=2pt
+
+\begin{document}
+\begin{center}
+\bf Semestralni projekt NI-PDP 2025/2026:\\[5mm]
+    Paralelni algoritmus pro reseni problemu\\[5mm] 
+       Jmeno Prijmeni\\[2mm]
+magisterske studijum, FIT CVUT, Thakurova 9, 160 00 Praha 6\\[2mm]
+\today
+\end{center}
+
+\section{Definice problemu a popis sekvencniho algoritmu}
+
+Popiste problem, ktery vas program resi. Jako vychozi pouzijte text
+zadani, ktery rozsirte o presne vymezeni vsech odchylek, ktere jste
+vuci zadani behem implementace provedli 
+(napr.  upravy heuristicke funkce, organizace zasobniku,
+apod.). Zminte i pripadne i takove prvky algoritmu, ktere v zadani
+nebyly specifikovany, ale ktere se ukazaly jako dulezite.  Dale
+popiste vstupy a vystupy algoritmu (format vstupnich a vystupnich
+dat). Uvedte tabulku namerenych casu sekvencniho algoritmu pro ruzne
+velka data.
+
+\section{Popis paralelniho algoritmu a jeho implementace v OpenMP - taskovy paralelismus}
+
+Popiste paralelni algoritmus, opet vyjdete ze zadani a presne vymezte
+odchylky, ktere pri implementaci OpenMP pouzivate.
+Popiste a vysvetlete strukturu celkoveho
+paralelniho algoritmu na urovni procesuu v OpenMP a strukturu kodu
+jednotlivych procesu. Napr. jak je naimplemtovana smycka pro cinnost
+procesu v aktivnim stavu i v stavu necinnosti. Jake jste zvolili
+konstanty a parametry pro skalovani algoritmu. Struktura a semantika
+prikazove radky pro spousteni programu.
+
+
+\section{Popis paralelniho algoritmu a jeho implementace v OpenMP - datovy paralelismus}
+
+Popiste paralelni algoritmus, opet vyjdete ze zadani a presne vymezte
+odchylky, ktere pri implementaci OpenMP pouzivate.
+Popiste a vysvetlete strukturu celkoveho
+paralelniho algoritmu na urovni procesuu v OpenMP a strukturu kodu
+jednotlivych procesu. Napr. jak je naimplemtovana smycka pro cinnost
+procesu v aktivnim stavu i v stavu necinnosti. Jake jste zvolili
+konstanty a parametry pro skalovani algoritmu. Struktura a semantika
+prikazove radky pro spousteni programu.
+
+\section{Popis paralelniho algoritmu a jeho implementace v MPI}
+
+Popiste paralelni algoritmus, opet vyjdete ze zadani a presne vymezte
+odchylky, zvlaste u Master-Slave casti. Popiste a vysvetlete strukturu celkoveho
+paralelniho algoritmu na urovni procesuu v MPI a strukturu kodu
+jednotlivych procesu. Napr. jak je naimplemtovana smycka pro cinnost
+procesu v aktivnim stavu i v stavu necinnosti. Jake jste zvolili
+konstanty a parametry pro skalovani algoritmu. Struktura a semantika
+prikazove radky pro spousteni programu.
+
+\section{Namerene vysledky a vyhodnoceni}
+
+\begin{enumerate}
+\item Zvolte tri instance problemu s takovou velikosti vstupnich dat, pro ktere ma sekvencni 
+algoritmus casovou slozitost alespon nekolik minut - vice informaci na {\tt http://courses.fit.cvut.cz} v sekci "Organizace cviceni".
+Pro mereni cas potrebny na cteni dat z disku a ulozeni na disk neuvazujte a zakomentujte
+ladici tisky, logy, zpravy a vystupy.
+\item Merte paralelni cas pri pouziti vice vypocetnich jader, viz: {\tt http://courses.fit.cvut.cz} v sekci "Organizace cviceni".
+\item Tabulkova a pripadne graficky zpracovane namerene hodnoty casove slozitosti měernych instanci behu programu s popisem instanci dat. Z namerenych dat sestavte grafy zrychleni $S(n,p)$. 
+\item Analyza a hodnoceni vlastnosti paralelniho programu, zvlaste jeho efektivnosti a skalovatelnosti, pripadne popis zjisteneho superlinearniho zrychleni.
+
+\end{enumerate}
+
+\section{Zaver}
+
+Celkove zhodnoceni semestralni prace a zkusenosti ziskanych behem semestru.
+
+\section{Literatura}
+
+
+\end{document}

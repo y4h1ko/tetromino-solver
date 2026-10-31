@@ -1,0 +1,220 @@
+\documentclass[a4paper]{article}
+
+% --- Nastavenie kódovania a jazyka (aby fungovalo Ú a ĺ) ---
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[slovak]{babel} % Slovenský balík pre správnu diakritiku a delenie slov
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage{makecell}
+
+% --- Moderná náhrada vašich okrajov a rozmerov ---
+\usepackage[
+    a4paper,
+    width=17cm,        % textwidth
+    height=25cm,       % textheight
+    top=15mm,          % topmargin (približne)
+    headheight=12pt,
+    headsep=25pt,
+    footskip=30pt,
+    marginparsep=0.01in,
+    marginparwidth=0.08in,
+    includeheadfoot    % zahrnie hlavičku a pätu do výšky textu
+]{geometry}
+
+% --- Nastavenie odstavcov a stĺpcov ---
+\setlength{\parindent}{15pt}    % odsadenie prvého riadku
+\setlength{\parskip}{2pt}       % medzera medzi odstavcami
+\setlength{\columnsep}{2mm}     % medzera medzi stĺpcami
+\setlength{\columnseprule}{1pt} % čiara medzi stĺpcami
+
+\begin{document}
+\begin{center}
+\bf Semestrálny projekt NI-PDP 2025/2026:\\[5mm]
+    Paralelný algoritmus pre riešenie problému quatromín s minimom\\[5mm] 
+       Adam Kleman\\[2mm]
+magisterské štúdium, FIT ČVUT, Thákurova 9, 160 00 Praha 6\\[2mm]
+\today
+\end{center}
+
+\section{Skladanie quatromín s minimom a jeho sekvenčná implementácia}
+
+Úlohou je nájsť pokrytie obdĺžnikovej hracej dosky D quatrominami tvaru T a Z s minimálnou reziduálnou cenou. Vstupom je obdĺžniková doska rozmerov $a \times b$, kde $3 \leq a, b \leq 20$, pričom platí $a \cdot b \geq 15$.
+Každé políčko dosky je ohodnotené prirodzeným číslom z intervalu $(0, 100)$. Jednotlivé quatrominá sa nesmú prekrývať a musia sa zmestiť do hraníc dosky. Musí byť splnená podmienka, že rozdiel quatromina typu T a Z sa nesmie líšiť o viac než $1$. 
+Výsledná cena je súčet všetkých nepokrytých políčok, takže cieľom je mať dosku so splnenými podmienkami a výsledným súčtom čo najmenším.
+
+Sekvenčná verzia algoritmu je implementovaná ako prehľadávanie stavového priestoru metódou Branch-and-Bound s použitím prehľadávania do hĺbky pomocou DFS. Každý stav reprezentuje čiastočné pokrytie dosky použitými tvarmi T a Z.
+
+Doska je reprezentovaná ako jednorozmerné pole veľkosti $rows \cdot cols$. Hodnoty v poli majú nasledovný význam: hodnota $0$ označuje nerozhodnuté políčko, kladné hodnoty reprezentujú umiestnené quatrominá typu T, záporné hodnoty quatrominá typu Z a špeciálna hodnota označuje nepokryté políčko, ktorého hodnota sa započítava do ceny riešenia.
+
+Algoritmus začína vygenerovaním množiny počiatočných konfigurácií, kde je na prázdnu dosku umiestnené práve jedno quatromino (T alebo Z) vo všetkých možných pozíciách a orientáciách. Pre každú takúto konfiguráciu sa následne spustí rekurzívne prehľadávanie. 
+V každom kroku prehľadávania sa vyberie prvé nerozhodnuté políčko, čím sa zabezpečí systematické prechádzanie stavového priestoru od „ľavého horného“ k „pravému spodnému“ políčku hracej dosky. 
+
+Pre každú vetvu sa vytvorí nový stav a prehľadávanie pokračuje rekurzívne do hĺbky. Po dosiahnutí úplného riešenia (t. j. keď už neexistujú nerozhodnuté políčka) sa overí podmienka vyváženosti počtu quatromín typu T a Z. Ak je riešenie prípustné a jeho cena je nižšia ako doteraz najlepšie riešenie, aktualizuje sa globálne optimum.
+
+Efektivita algoritmu je zabezpečená pomocou viacerých prerezávacích podmienok (branch-and-bound). Základnou je dolná medza ceny riešenia, ktorá sa počíta ako súčet najmenších možných hodnôt políčok, ktoré musia zostať nepokryté vzhľadom na to, že quatrominá pokrývajú vždy štyri políčka. 
+Ak súčet aktuálnej ceny a tejto dolnej medze presiahne alebo sa rovná doteraz najlepšiemu riešeniu, vetva je zrezaná.
+
+Ďalšia podmienka prerezávania vychádza z obmedzenia na počet použitých quatromín typu T a Z. Ak rozdiel medzi ich počtom už nie je možné dorovnať vzhľadom na zostávajúci počet políčok, vetva je ukončená.
+Algoritmus taktiež využíva možnosť predčasného ukončenia výpočtu v prípade, že sa nájde riešenie s cenou rovnou triviálnej dolnej medze, ktorá predstavuje teoretické minimum.
+
+
+\section{Implementácia táskového paralelizmu pomocou OpenMP}
+
+Tasková paralelná verzia vychádza priamo zo sekvenčného algoritmu BB-DFS a zachováva rovnakú reprezentáciu stavov aj rovnaké prerezávacie podmienky, teda každý stav prehľadávaného priestoru obsahuje stav dosky.
+
+Hlavná zmena oproti sekvenčnej implementácii spočíva v tom, že jednotlivé vetvy rekurzívneho prehľadávania sú v horných úrovniach stromu spracovávané ako samostatné OpenMP tasky. Vstupný stav je v tejto verzii prázdna doska a prehľadávanie sa spúšťa z jedného koreňového stavu v rámci paralelnej oblasti, ktorú začína direktíva \texttt{parallel}. 
+Jedno vlákno typu \texttt{master} inicializuje výpočet a vytvára tasky, ktoré následne vykonávajú ostatné vlákna tímu. Počet vlákien je možné nastaviť parametrom príkazového riadku \texttt{-t} a maximálna hĺbka, do ktorej sa ešte vytvárajú nové tasky, je riadená parametrom \texttt{-d}. Parameter \texttt{-d} sa na zadaných úlohách osvedčil pre úlohy do hĺbky $4$.
+
+Prehľadávanie je rozšírené o parameter hĺbky a pokiaľ je hĺbka menšia než zvolený limit, každé vytvorené potomok je spracované ako nový OpenMP task.
+Po dosiahnutí tejto hranice sa ďalšie vetvy už nerobia ako tasky, ale spracujú sa sekvenčne. Na konci spracovania daného uzla sa používa direktíva \texttt{taskwait}, aby sa dokončilo spracovanie všetkých potomkov vytvorených v tomto uzle.
+
+Keďže všetky tasky zdieľajú globálne najlepšie riešenie, je nutné synchronizovať prístup k zdieľaným premenným. Počet rekurzívnych volaní sa aktualizuje atomicky. Premenné \texttt{stop} a \texttt{bestCost} sa najprv čítajú pomocou atómických operácií do lokálnych kópií, aby sa znížil počet synchronizovaných prístupov. 
+V prípade nájdenia nového najlepšieho riešenia sa používa kritická sekcia, v ktorej sa bezpečne aktualizuje riešenie, teda hodnoty \texttt{bestCost}, \texttt{bestState}, \texttt{bestT} a \texttt{bestZ}.
+Pri tvorení taskov sa každý nový stav odovzdáva ako \texttt{firstprivate}, ostatné zostávajú ako zdieľané premenné. 
+
+\section{Implementácia dátového paralelizmu pomocou OpenMP}
+
+Dátová paralelná verzia algoritmu taktiež vychádza zo sekvenčného riešenia, pričom sa paralelizuje výpočet z nezávislých počiatočných konfigurácií. 
+Každá počiatočná konfigurácia predstavuje stav, v ktorom je na dosku umiestnené jedno quatromino, a následné prehľadávanie stavového priestoru prebieha nezávisle pomocou BB-DFS pre každú z nich.
+Na začiatku výpočtu sa vygeneruje množina všetkých možných počiatočných konfigurácií, ktoré sa ukladajú do poľa \texttt{std::vector}, čo predstavuje frontu, z ktorej sú prideľované počiatočné konfigurácie vláknam. Každá konfigurácia obsahuje aktuálny stav dosky, počet použitých quatromín typu T a Z a aktuálnu cenu riešenia.
+
+Paralelizácia je realizovaná pomocou OpenMP direktívy \texttt{parallel}, pričom jedno vlákno (master) inicializuje výpočet a vytvára jednotlivé konfigurácie. Tieto úlohy sú následne spracovávané ostatnými vláknami, pričom každé vlákno vykonáva sekvenčný BB-DFS algoritmus nad pridelenou konfiguráciou a hľadá lokálne najlepšie riešenie. 
+Po dosiahnutí najlepšieho riešenia v danej vetve, je nutná aktualizácia globálneho riešenia, ktorá je realizovaná pomocou kritickej sekcie, aby nedošlo ku konfliktu medzi vláknami.
+
+Keďže jednotlivé konfigurácie sú navzájom nezávislé, väčšina výpočtu prebieha bez potreby synchronizácie. Synchronizácia je však nevyhnutná pri práci so zdieľanými premennými, ktoré reprezentujú globálne najlepšie riešenie. 
+Zdieľané premenné \texttt{bestCost} a príznak \texttt{stop} sú čítané pomocou atómických operácií, aby sa zabezpečila konzistentnosť medzi vláknami. 
+V prípade nájdenia nového lepšieho riešenia sa používa kritická sekcia, v ktorej sa bezpečne aktualizuje globálny stav riešenia. Využíva sa aj atómická operácia pri aktualizácii počtu rekurzívnych volaní do lokálnej kópie.
+Rovnako ako v taskovej verzii algoritmus využíva zdieľanú hornú medzu ceny riešenia, ktorá sa priebežne aktualizuje a využíva na prerezávanie neperspektívnych vetiev. Táto hodnota je zdieľaná medzi všetkými vláknami a prispieva k zníženiu počtu prehľadávaných stavov.
+
+\section{Implementácia kombinácie dátového paralelismu pomocou OpenMP a MPI pre prácu s distribuovanou pamäťou}
+
+MPI verzia algoritmu je implementovaná ako hybridné riešenie kombinujúce distribuovaný paralelizmus medzi procesmi a paralelizmus so zdieľanou pamäťou pomocou OpenMP vo vnútri každého procesu. 
+Základ algoritmu opäť vychádza zo sekvenčného BB-DFS, avšak stavový priestor je rozdeľovaný medzi viaceré MPI procesy v architektúre master-slave.
+
+Úlohou procesu s rankom $0$ je najprv vytvoriť počiatočnú frontu stavov pomocou obmedzeného BFS rozvoja do zadanej hĺbky. Táto hĺbka je riadená parametrom \texttt{-l}. 
+Výsledkom nie je jedno riešenie, ale množina čiastočných konfigurácií, ktoré predstavujú korene nezávislých podstromov ďalšieho prehľadávania. 
+Tieto konfigurácie master rozdeľuje slave procesom po dávkach, pričom veľkosť dávky je riadená parametrom \texttt{-c}.
+
+Slave procesy pracujú v opakovanej slučke prijímania práce od master procesu. 
+V aktívnom stave slave prijme chunk konfigurácií, prevezme od mastera aj aktuálnu hodnotu najlepšej známej ceny a následne tento chunk spracuje lokálne pomocou funkcie \texttt{solveQueueOpenMP}. 
+Táto funkcia využíva v rámci jedného procesu OpenMP paralelizmus nad množinou pridelených konfigurácií, takže každý slave je sám o sebe viacvláknový. 
+Po dokončení chunku worker odošle masterovi svoje lokálne najlepšie riešenie, počet rekurzívnych volaní a počet použitých vlákien, inak slave čaká na ďalšiu správu od mastera. 
+Ak prijme špeciálnu správu s tagom ukončenia, opustí pracovnú slučku a ukončí sa.
+
+Master proces po počiatočnom rozoslaní práce priebežne prijíma výsledky od ľubovoľného slave procesu. 
+Po prijatí výsledku aktualizuje globálne najlepšie riešenie a rozhodne, či danému workeru pošle ďalší chunk práce, alebo mu odošle ukončovaciu správu. 
+
+Pre rozoslanie práce sa odosiela hlavička obsahujúca počet konfigurácií v chunku a aktuálnu najlepšiu známu cenu riešenia. 
+Komunikácia medzi procesmi je realizovaná explicitne pomocou MPI správ typu point-to-point. Používajú sa viaceré typy správ rozlíšené pomocou 6 custom tagov, napríklad správy pre rozoslanie práce (WORK), prenos samotného stavu dosky (BOARD), odoslanie výsledkov (RESULT) a ukončenie výpočtu (STOP). Každá správa obsahuje buď riadiace informácie (napr. veľkosť chunku, aktuálnu hornú medzu ceny), alebo samotné dáta reprezentujúce konfiguráciu dosky. Tento prístup umožňuje flexibilné riadenie výpočtu a dynamické prideľovanie práce medzi procesmi.
+
+Algoritmus využíva aj viaceré parametre, napríklad parameter \texttt{-t} sa nastavuje počet OpenMP vlákien v jednom procese, parametrom \texttt{-l} hĺbka BFS rozvoja a parametrom \texttt{-c} veľkosť chunku odosielaného jednemu slave procesu.
+
+
+\section{Namerané výsledky a vyhodnotenie}
+
+\subsection{Nastavenie experimentov}
+
+Merania boli realizované na klastri \texttt{cluster-arm.fit.cvut.cz} pomocou plánovača úloh SLURM.
+Pre OpenMP implementácie bol počet vlákien riadený parametrom \texttt{-t} a nadobúdal hodnoty 1, 2, 4, 8, 12, 16, 32 a 48.
+MPI implementácia bola spúšťaná s 4 procesmi (1 master a 3 slave procesy). Každý proces využíval viacvláknový výpočet pomocou OpenMP.
+Pre MPI verziu bol počet vlákien v procese nastavený podľa najlepších výsledkov získaných z OpenMP meraní.
+
+Čas merania predstavuje čistý čas výpočtu bez započítania načítania vstupných dát a výstupu výsledkov. Meranie bolo realizované pomocou funkcií \texttt{omp\_get\_wtime()} a \texttt{MPI\_Wtime()}.
+Každá konfigurácia bola spustená viackrát a výsledný čas predstavuje priemernú hodnotu z týchto behov.
+Namerané výsledky sú uvedené v Tabuľke~1 a Tabuľke~2. Merania boli realizované pre tri rôzne vstupné inštancie rôznej náročnosti.
+
+Zrýchlenie $S$ bolo vypočítané vzhľadom na implementovanú sekvenčnú verziu algoritmu.
+Efektivita paralelného výpočtu bola počítaná ako zrýchlenie vzhľadom na sekvenčný čas a $p$ predstavuje počet použitých výpočtových jadier. 
+V prípade OpenMP implementácie zodpovedá $p$ počtu vlákien, zatiaľ čo pri hybridnej MPI a OpenMP implementácii bolo uvažované $p = 4 \cdot t$, kde 4 je počet MPI procesov a $t$ počet vlákien v rámci jedného procesu.
+$$
+S=\frac{T_{\mathrm{seq}}}{T_t} \qquad \qquad \qquad E = \frac{S}{p}
+$$
+
+%% porovnanie TASK a DATA paralelizmu
+\subsection{Meranie Task a Data paralelizmu}
+Zo získaných výsledkov je zrejmé, že tasková paralelizácia dosahuje výrazne lepšie zrýchlenie než dátová paralelizácia na danej vzorke inštancií. 
+Pri zvyšovaní počtu vlákien dochádza k výraznému poklesu výpočtového času, pričom najlepšie výsledky boli dosiahnuté pre vyššie hodnoty parametra \texttt{t} (napr. 32 alebo 48 vlákien). 
+Zlepšenie však nie je lineárne a pri vyšších počtoch vlákien sa prejavuje saturácia výkonu spôsobená režijnými nákladmi na správu taskov a synchronizáciu.
+
+\input{OpenTab}
+
+Dátová paralelizácia vykazuje stabilné zrýchlenie, avšak výrazne pomalšie než tasková verzia. 
+Hodnoty parametrov \texttt{-d} a \texttt{-l} boli zvolené na základe experimentálneho ladenia OpenMP implementácií.
+
+
+%% Obkec vstupnych dát
+Výsledky ukazujú, že efektivita paralelizácie závisí aj od konkrétnej inštancie problému. 
+Napríklad pre inštanciu \texttt{mapa9\_9} je zrýchlenie výraznejšie než pre ostatné prípady, čo naznačuje väčší a vhodnejšie štruktúrovaný stavový priestor pre paralelné spracovanie.
+
+Naopak, pri niektorých konfiguráciách sa objavujú výkyvy v čase, čo je spôsobené nevyváženým rozdelením práce a rôznou náročnosťou jednotlivých vetiev DFS prehľadávania.
+
+%% porovnanie MPI implementácie
+\subsection{Meranie MPI paralelizmu}
+Výsledky hybridnej MPI s OpenMP implementáciou sú uvedené v Tabuľke~2. 
+Táto verzia kombinuje distribuovaný paralelizmus medzi procesmi a zdieľanú paralelizáciu pomocou OpenMP v rámci jednotlivých procesov.
+
+Z výsledkov je zrejmé, že výkon MPI implementácie závisí od parametra \texttt{-c}, ktorý určuje veľkosť chunku odosielaného jednotlivým procesom. 
+Príliš malé chunky vedú k častej komunikácii medzi procesmi a vyššej režii, zatiaľ čo príliš veľké chunky spôsobujú nevyvážené rozdelenie práce.
+
+Najlepšie výsledky boli dosiahnuté pre stredné hodnoty chunku ($c = 10$), avšak rozdiely medzi jednotlivými hodnotami nie sú výrazné.
+Zároveň je viditeľné, že zvýšenie počtu vlákien v rámci jedného procesu (\texttt{t}) má len zanedbateľný pozitívny vplyv na výkon.
+
+MPI implementácia bola testovaná s konfiguráciou 4 procesov (1 master + 3 slaves), čo zodpovedá odporúčaniam zadania a dostupnej architektúre klastra.
+
+
+\input{MpiTab}
+
+\section{Záver}
+
+V rámci práce boli implementované a porovnané viaceré paralelné prístupy k riešeniu problému skladania quatromín, konkrétne taskový a dátový paralelizmus pomocou OpenMP a hybridná MPI + OpenMP verzia.
+Na základe nameraných výsledkov sa ukazuje, že tasková paralelizácia dosahuje na meraných inštanciach najlepšie výkonnostné výsledky.
+
+Dátová paralelizácia je naopak jednoduchšia a stabilnejšia, avšak menej efektívna. Jej nevýhodou je horšie vyváženie záťaže medzi vláknami, keďže jednotlivé úlohy majú rôznu výpočtovú náročnosť.
+
+Hybridná MPI implementácia poskytuje konkurencieschopný výkon, pričom jej hlavnou výhodou je schopnosť distribuovať výpočet medzi viacero procesov. 
+Na druhej strane je jej efektivita ovplyvnená nastavením parametrov, napríklad veľkosťou chunku, ktorá má vplyv na vyváženie práce a komunikačnú réžiu.
+
+Efektivita paralelizácie však s rastúcim počtom vlákien klesá, čo je spôsobené rastúcou režijnou záťažou a synchronizáciou medzi vláknami.
+V niektorých konfiguráciách bolo pozorované zrýchlenie väčšie než počet použitých výpočtových jadier. 
+
+Tento jav však neinterpretujeme ako klasickú hardvérovú superlinearitu, ale ako dôsledok charakteru algoritmu typu Branch-and-Bound, kde paralelné prehľadávanie môže viesť k skoršiemu nájdeniu kvalitného riešenia a následne k intenzívnejšiemu prerezávaniu stavového priestoru.
+
+V niektorých konfiguráciách vychádza vypočítaná efektivita väčšia než 1. 
+Tento jav je spôsobený tým, že pri algoritme typu Branch-and-Bound paralelná verzia nemusí prehľadávať rovnaký počet stavov ako sekvenčná verzia. 
+Nejde teda o klasickú hardvérovú efektivitu, ale o dôsledok odlišného priebehu prehľadávania stavového priestoru.
+
+
+\begin{thebibliography}{9}
+
+\bibitem{pdp-assignment}
+Langr, D., Šimeček, I., Šoch, M.:
+\textit{Měření, vyhodnocení a sepsání zprávy}.
+FIT ČVUT, 2026.
+
+\bibitem{openmp}
+OpenMP Architecture Review Board:
+\textit{OpenMP Application Programming Interface}.
+https://www.openmp.org/
+
+\bibitem{mpi}
+Message Passing Interface Forum:
+\textit{MPI: A Message-Passing Interface Standard}.
+https://www.mpi-forum.org/
+
+\bibitem{slurm}
+SLURM Workload Manager:
+\textit{SLURM Documentation}.
+https://slurm.schedmd.com/
+
+\bibitem{course}
+NI-PDP Course Materials:
+\textit{Paralelní a distribuované programování}.
+FIT ČVUT.
+
+\end{thebibliography}
+
+\end{document}

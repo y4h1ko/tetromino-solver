@@ -1,7 +1,15 @@
 .vscode/
+.gitignore
 cluster/
 mater-2026/
 info-2025/
 report-klemaada/
 mpilogs/
 zprava-template.pdf
+
+*.sh
+cluster.md
+mpi_test.exe
+mpihello.cpp
+mpihello.exe
+part4mpiOpenmpweirdlydone.cpp
